@@ -1,6 +1,6 @@
 %define module unionfs
 %define version 1.4
-%define release	%mkrel 4
+%define release	%mkrel 5
 
 Summary: A Stackable Unification File System
 Name: %{module}
@@ -17,6 +17,8 @@ Patch2: fs-unionfs-1.4-security_hooks.patch
 Patch3: fs-unionfs-1.4-noapparmor.patch
 Patch4: fs-unionfs-wrap-current-fsgid-fsuid.patch
 Patch5: fs-unionfs-dentry_open-credentials.patch
+Patch6: fs-unionfs-atomic_long_t-f_count.patch
+Patch7: fs-unionfs-use-current_umask-helper.patch
 License: GPL
 Group: System/Kernel and hardware
 URL: http://www.filesystems.org/project-unionfs.html
@@ -54,6 +56,8 @@ patch -p3 < unionfs.patch || [ -f unionfs.h ]
 %patch3 -p3
 %patch4 -p3
 %patch5 -p3
+%patch6 -p3
+%patch7 -p3
 perl -pi -e 's/\$\(CONFIG_UNION_FS\)/m/' Makefile
 perl -p -e 's/\@VERSION@/%{version}/' < %{SOURCE1} > dkms.conf
 
