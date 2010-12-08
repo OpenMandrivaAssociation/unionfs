@@ -1,6 +1,6 @@
 %define module unionfs
 %define version 1.4
-%define release	%mkrel 5
+%define release	%mkrel 6
 
 Summary: A Stackable Unification File System
 Name: %{module}
