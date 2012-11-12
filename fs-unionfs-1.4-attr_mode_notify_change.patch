@@ -1,0 +1,32 @@
+diff -p -up linux-2.6.26/fs/unionfs/inode.c.orig linux-2.6.26/fs/unionfs/inode.c
+--- linux-2.6.26/fs/unionfs/inode.c.orig	2008-09-04 15:39:27.000000000 -0300
++++ linux-2.6.26/fs/unionfs/inode.c	2008-09-04 15:44:19.000000000 -0300
+@@ -78,15 +78,14 @@ static int unionfs_create(struct inode *
+ 		struct dentry *hidden_dir_dentry;
+ 		struct iattr newattrs;
+ 
+-		mutex_lock(&whiteout_dentry->d_inode->i_mutex);
+ 		newattrs.ia_valid = ATTR_CTIME | ATTR_ATIME
+-		    | ATTR_MTIME | ATTR_UID | ATTR_GID | ATTR_FORCE
+-		    | ATTR_KILL_SUID | ATTR_KILL_SGID;
++		    | ATTR_MTIME | ATTR_UID | ATTR_GID | ATTR_FORCE;
+ 
+-		newattrs.ia_mode = mode & ~current->fs->umask;
++		newattrs.ia_mode = mode & ~(current->fs->umask|S_ISUID|S_ISGID);
+ 		newattrs.ia_uid = current->fsuid;
+ 		newattrs.ia_gid = current->fsgid;
+ 
++		mutex_lock(&whiteout_dentry->d_inode->i_mutex);
+ 		if (whiteout_dentry->d_inode->i_size != 0) {
+ 			newattrs.ia_valid |= ATTR_SIZE;
+ 			newattrs.ia_size = 0;
+@@ -911,6 +910,9 @@ static int unionfs_setattr(struct dentry
+ 	bend = dbend(dentry);
+ 	inode = dentry->d_inode;
+ 
++	if (ia->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
++		ia->ia_valid &= ~ATTR_MODE;
++
+ 	for (bindex = bstart; (bindex <= bend) || (bindex == bstart); bindex++) {
+ 		hidden_dentry = dtohd_index(dentry, bindex);
+ 		if (!hidden_dentry)

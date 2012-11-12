@@ -1,0 +1,19 @@
+Use atomic_long_read for f_count (f_count is atomic_long_t).
+
+Signed-off-by: Herton Ronaldo Krzesinski <herton@mandriva.com.br>
+---
+ fs/unionfs/print.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff -p -up linux-2.6.30/fs/unionfs/print.c.orig linux-2.6.30/fs/unionfs/print.c
+--- linux-2.6.30/fs/unionfs/print.c.orig	2009-07-29 11:38:12.000000000 -0300
++++ linux-2.6.30/fs/unionfs/print.c	2009-07-29 11:38:27.000000000 -0300
+@@ -139,7 +139,7 @@ static void unionfs_print_generic_file(c
+ 	printk(KERN_DEBUG UNIONFS_NAME ": PF:%s%s: f_op=0x%p\n", prefix, prefix2, file->f_op);
+ 	printk(KERN_DEBUG UNIONFS_NAME ": PF:%s%s: f_mode=0x%x\n", prefix, prefix2, file->f_mode);
+ 	printk(KERN_DEBUG UNIONFS_NAME ": PF:%s%s: f_pos=0x%llu\n", prefix, prefix2, file->f_pos);
+-	printk(KERN_DEBUG UNIONFS_NAME ": PF:%s%s: f_count=%u\n", prefix, prefix2, atomic_read(&file->f_count));
++	printk(KERN_DEBUG UNIONFS_NAME ": PF:%s%s: f_count=%u\n", prefix, prefix2, atomic_long_read(&file->f_count));
+ 	printk(KERN_DEBUG UNIONFS_NAME ": PF:%s%s: f_flags=0x%x\n", prefix, prefix2, file->f_flags);
+ 	printk(KERN_DEBUG UNIONFS_NAME ": PF:%s%s: f_version=%llu\n", prefix, prefix2, file->f_version);
+ }

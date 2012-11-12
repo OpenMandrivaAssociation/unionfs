@@ -1,0 +1,33 @@
+Use current_umask() helper, needed on 2.6.30
+
+Signed-off-by: Herton Ronaldo Krzesinski <herton@mandriva.com.br>
+
+---
+ fs/unionfs/inode.c |    2 +-
+ fs/unionfs/subr.c  |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff -p -up linux-2.6.29/fs/unionfs/inode.c.orig linux-2.6.29/fs/unionfs/inode.c
+--- linux-2.6.29/fs/unionfs/inode.c.orig	2009-05-22 02:13:51.000000000 -0300
++++ linux-2.6.29/fs/unionfs/inode.c	2009-05-22 02:14:17.000000000 -0300
+@@ -81,7 +81,7 @@ static int unionfs_create(struct inode *
+ 		newattrs.ia_valid = ATTR_CTIME | ATTR_ATIME
+ 		    | ATTR_MTIME | ATTR_UID | ATTR_GID | ATTR_FORCE;
+ 
+-		newattrs.ia_mode = mode & ~(current->fs->umask|S_ISUID|S_ISGID);
++		newattrs.ia_mode = mode & ~(current_umask()|S_ISUID|S_ISGID);
+ 		newattrs.ia_uid = current_fsuid();
+ 		newattrs.ia_gid = current_fsgid();
+ 
+diff -p -up linux-2.6.29/fs/unionfs/subr.c.orig linux-2.6.29/fs/unionfs/subr.c
+--- linux-2.6.29/fs/unionfs/subr.c.orig	2009-05-22 02:12:51.000000000 -0300
++++ linux-2.6.29/fs/unionfs/subr.c	2009-05-22 02:13:32.000000000 -0300
+@@ -88,7 +88,7 @@ int create_whiteout(struct dentry *dentr
+ 			err =
+ 			    vfs_create(hidden_dir_dentry->d_inode,
+ 				       hidden_wh_dentry,
+-				       ~current->fs->umask & S_IRWXUGO, NULL);
++				       ~current_umask() & S_IRWXUGO, NULL);
+ 
+ 		}
+ 		unlock_dir(hidden_dir_dentry);

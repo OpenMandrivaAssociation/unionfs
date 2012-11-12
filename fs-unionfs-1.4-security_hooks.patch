@@ -1,0 +1,92 @@
+diff -p -up linux-2.6.26/fs/unionfs/inode.c.orig linux-2.6.26/fs/unionfs/inode.c
+--- linux-2.6.26/fs/unionfs/inode.c.orig	2008-09-04 15:51:23.000000000 -0300
++++ linux-2.6.26/fs/unionfs/inode.c	2008-09-04 15:55:47.000000000 -0300
+@@ -790,61 +790,6 @@ void unionfs_put_link(struct dentry *den
+ 	print_exit_location();
+ }
+ 
+-/* Basically copied from the kernel vfs permission(), but we've changed
+- * the following: (1) the IS_RDONLY check is skipped, and (2) if you set
+- * the mount option `nfsperms=insceure', we assume that -EACCES means that
+- * the export is read-only and we should check standard Unix permissions.
+- * This means that NFS ACL checks (or other advanced permission features)
+- * are bypassed.
+- */
+-static int unionfs_inode_permission(struct inode *inode, int mask, struct nameidata *nd,
+-			    int bindex)
+-{
+-	int retval, submask;
+-
+-	if (mask & MAY_WRITE) {
+-		/* The first branch is allowed to be really readonly. */
+-		if (bindex == 0) {
+-			umode_t mode = inode->i_mode;
+-			if (IS_RDONLY(inode) && (S_ISREG(mode) || S_ISDIR(mode)
+-						 || S_ISLNK(mode)))
+-				return -EROFS;
+-		}
+-		/*
+-		 * Nobody gets write access to an immutable file.
+-		 */
+-		if (IS_IMMUTABLE(inode))
+-			return -EACCES;
+-	}
+-
+-	/* Ordinary permission routines do not understand MAY_APPEND. */
+-	submask = mask & ~MAY_APPEND;
+-	if (inode->i_op && inode->i_op->permission) {
+-		retval = inode->i_op->permission(inode, submask);
+-		if ((retval == -EACCES) && (submask & MAY_WRITE) &&
+-		    (!strcmp("nfs", (inode)->i_sb->s_type->name)) &&
+-		    (nd) && (nd->path.mnt) && (nd->path.mnt->mnt_sb) &&
+-		    (branchperms(nd->path.mnt->mnt_sb, bindex) & MAY_NFSRO)) {
+-			retval = generic_permission(inode, submask, NULL);
+-		}
+-	} else {
+-		retval = generic_permission(inode, submask, NULL);
+-	}
+-
+-	if (retval && retval != -EROFS) /* ignore EROFS */
+-		return retval;
+-
+-	/*
+-	 * skip the LSM permission check.  This means unionfs will wrongly
+-	 * copy up a LSM non-writable/non-readable file on a readonly branch
+-	 * to a read-write branch leading to odd behaviour.  Until the mess
+-	 * of the LSM interface changes are resolved, there's nothing else
+-	 * that can be done.
+-	 *	retval = security_inode_permission(inode, mask, nd);
+-	 */
+-	return ((retval == -EROFS) ? 0 : retval); /* ignore EROFS */
+-}
+-
+ static int unionfs_permission(struct inode *inode, int mask)
+ {
+ 	struct inode *hidden_inode = NULL;
+@@ -871,9 +816,23 @@ static int unionfs_permission(struct ino
+ 		 */
+ 		if (!is_file && !S_ISDIR(hidden_inode->i_mode))
+ 			continue;
+-		/* We use our own special version of permission, such that
+-		 * only the first branch returns -EROFS. */
+-		err = unionfs_inode_permission(hidden_inode, mask, NULL, bindex);
++
++		/*
++		 * We check basic permissions, but we ignore any conditions
++		 * such as readonly file systems or branches marked as
++		 * readonly, because those conditions should lead to a
++		 * copyup taking place later on.
++		 */
++		err = inode_permission(hidden_inode, mask);
++		if (err && bindex > 0) {
++			umode_t mode = hidden_inode->i_mode;
++			if (is_robranch_super(inode->i_sb, bindex) &&
++			    (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode)))
++				err = 0;
++			if (IS_COPYUP_ERR(err))
++				err = 0;
++		}
++
+ 		/* The permissions are an intersection of the overall directory
+ 		 * permissions, so we fail if one fails. */
+ 		if (err)

@@ -1,0 +1,338 @@
+diff -p -up linux-2.6.28/fs/unionfs/commonfops.c.orig linux-2.6.28/fs/unionfs/commonfops.c
+--- linux-2.6.28/fs/unionfs/commonfops.c.orig	2008-12-10 17:31:42.000000000 -0500
++++ linux-2.6.28/fs/unionfs/commonfops.c	2008-12-10 17:31:54.000000000 -0500
+@@ -149,7 +149,7 @@ static int copyup_deleted_file(struct fi
+ 	/* bring it to the same state as an unlinked file */
+ 	hidden_dentry = dtohd_index(dentry, dbstart(dentry));
+ 	hidden_dir_dentry = lock_parent(hidden_dentry);
+-	err = vfs_unlink(hidden_dir_dentry->d_inode, hidden_dentry, NULL);
++	err = vfs_unlink(hidden_dir_dentry->d_inode, hidden_dentry/*, NULL*/);
+ 	unlock_dir(hidden_dir_dentry);
+ 
+       out:
+diff -p -up linux-2.6.28/fs/unionfs/copyup.c.orig linux-2.6.28/fs/unionfs/copyup.c
+--- linux-2.6.28/fs/unionfs/copyup.c.orig	2008-12-10 17:26:53.000000000 -0500
++++ linux-2.6.28/fs/unionfs/copyup.c	2008-12-10 17:29:43.000000000 -0500
+@@ -34,7 +34,7 @@ static int copyup_xattrs(struct dentry *
+ 
+ 	print_entry_location();
+ 
+-	list_size = vfs_listxattr(old_hidden_dentry, NULL, NULL, 0, NULL);
++	list_size = vfs_listxattr(old_hidden_dentry, /*NULL,*/ NULL, 0/*, NULL*/);
+ 
+ 	if (list_size <= 0) {
+ 		err = list_size;
+@@ -46,8 +46,8 @@ static int copyup_xattrs(struct dentry *
+ 		err = PTR_ERR(name_list);
+ 		goto out;
+ 	}
+-	list_size = vfs_listxattr(old_hidden_dentry, NULL, name_list,
+-				  list_size, NULL);
++	list_size = vfs_listxattr(old_hidden_dentry, /*NULL,*/ name_list,
++				  list_size/*, NULL*/);
+ 	attr_value = xattr_alloc(XATTR_SIZE_MAX, XATTR_SIZE_MAX);
+ 	if (!attr_value || IS_ERR(attr_value)) {
+ 		err = PTR_ERR(name_list);
+@@ -59,8 +59,8 @@ static int copyup_xattrs(struct dentry *
+ 
+ 		//We need to lock here since vfs_getxattr doesn't lock for us.
+ 		mutex_lock(&old_hidden_dentry->d_inode->i_mutex);
+-		size = vfs_getxattr(old_hidden_dentry, NULL, name_list,
+-				    attr_value, XATTR_SIZE_MAX, NULL);
++		size = vfs_getxattr(old_hidden_dentry, /*NULL,*/ name_list,
++				    attr_value, XATTR_SIZE_MAX/*, NULL*/);
+ 		mutex_unlock(&old_hidden_dentry->d_inode->i_mutex);
+ 		if (size < 0) {
+ 			err = size;
+@@ -72,8 +72,8 @@ static int copyup_xattrs(struct dentry *
+ 			goto out;
+ 		}
+ 		//We don't need to lock here since vfs_setxattr does it for us.
+-		err = vfs_setxattr(new_hidden_dentry, NULL, name_list,
+-				   attr_value, size, 0, NULL);
++		err = vfs_setxattr(new_hidden_dentry, /*NULL,*/ name_list,
++				   attr_value, size, 0/*, NULL*/);
+ 
+ 		if (err < 0)
+ 			goto out;
+@@ -119,7 +119,7 @@ static int copyup_permissions(struct sup
+ 						      i_mode & ~S_IALLUGO);
+ 	}
+ 
+-	err = notify_change(new_hidden_dentry, NULL, &newattrs);
++	err = notify_change(new_hidden_dentry, /*NULL,*/ &newattrs);
+ 
+ 	print_exit_status(err);
+ 	return err;
+@@ -369,7 +369,7 @@ int copyup_named_dentry(struct inode *di
+ 			 * or something else happened so let's unlink; we don't
+ 			 * really care about the return value of vfs_unlink */
+ 			vfs_unlink(new_hidden_parent_dentry->d_inode,
+-				   new_hidden_dentry, NULL);
++				   new_hidden_dentry/*, NULL*/);
+ 
+ 			goto out_dir;
+ 		}
+diff -p -up linux-2.6.28/fs/unionfs/dirhelper.c.orig linux-2.6.28/fs/unionfs/dirhelper.c
+--- linux-2.6.28/fs/unionfs/dirhelper.c.orig	2008-12-10 17:29:52.000000000 -0500
++++ linux-2.6.28/fs/unionfs/dirhelper.c	2008-12-10 17:30:06.000000000 -0500
+@@ -69,8 +69,8 @@ int do_delete_whiteouts(struct dentry *d
+ 				break;
+ 			}
+ 			if (hidden_dentry->d_inode)
+-				err = vfs_unlink(hidden_dir, hidden_dentry,
+-						 NULL);
++				err = vfs_unlink(hidden_dir, hidden_dentry/*,
++						 NULL*/);
+ 			dput(hidden_dentry);
+ 			if (err)
+ 				break;
+diff -p -up linux-2.6.28/fs/unionfs/inode.c.orig linux-2.6.28/fs/unionfs/inode.c
+--- linux-2.6.28/fs/unionfs/inode.c.orig	2008-12-10 16:37:26.000000000 -0500
++++ linux-2.6.28/fs/unionfs/inode.c	2008-12-10 17:24:32.000000000 -0500
+@@ -91,7 +91,7 @@ static int unionfs_create(struct inode *
+ 			newattrs.ia_size = 0;
+ 		}
+ 
+-		err = notify_change(whiteout_dentry, NULL, &newattrs);
++		err = notify_change(whiteout_dentry, /*NULL,*/ &newattrs);
+ 
+ 		mutex_unlock(&whiteout_dentry->d_inode->i_mutex);
+ 
+@@ -109,9 +109,9 @@ static int unionfs_create(struct inode *
+ 		if (!(err = is_robranch_super(dentry->d_sb, bstart))) {
+ 			err =
+ 			    vfs_rename(hidden_dir_dentry->d_inode,
+-				       whiteout_dentry, NULL,
++				       whiteout_dentry, /*NULL,*/
+ 				       hidden_dir_dentry->d_inode,
+-				       new_hidden_dentry, NULL);
++				       new_hidden_dentry/*, NULL*/);
+ 		}
+ 		if (!err) {
+ 			fist_copy_attr_timesizes(parent,
+@@ -264,7 +264,7 @@ static int unionfs_link(struct dentry *o
+ 				       dbstart(new_dentry)))) {
+ 			err =
+ 			    vfs_unlink(hidden_dir_dentry->d_inode,
+-				       whiteout_dentry, NULL);
++				       whiteout_dentry/*, NULL*/);
+ 		}
+ 		fist_copy_attr_times(dir, hidden_dir_dentry->d_inode);
+ 		dir->i_nlink = get_nlinks(dir);
+@@ -291,9 +291,9 @@ static int unionfs_link(struct dentry *o
+ 	hidden_dir_dentry = lock_parent(hidden_new_dentry);
+ 	if (!(err = is_robranch(old_dentry)))
+ 		err =
+-		    vfs_link(hidden_old_dentry, NULL,
++		    vfs_link(hidden_old_dentry, /*NULL,*/
+ 			     hidden_dir_dentry->d_inode,
+-			     hidden_new_dentry, NULL);
++			     hidden_new_dentry/*, NULL*/);
+ 	unlock_dir(hidden_dir_dentry);
+ 
+       docopyup:
+@@ -314,9 +314,9 @@ static int unionfs_link(struct dentry *o
+ 				hidden_dir_dentry =
+ 				    lock_parent(hidden_new_dentry);
+ 				/* do vfs_link */
+-				err = vfs_link(hidden_old_dentry, NULL,
++				err = vfs_link(hidden_old_dentry, /*NULL,*/
+ 					       hidden_dir_dentry->d_inode,
+-					       hidden_new_dentry, NULL);
++					       hidden_new_dentry/*, NULL*/);
+ 				unlock_dir(hidden_dir_dentry);
+ 				goto check_link;
+ 			}
+@@ -395,7 +395,7 @@ static int unionfs_symlink(struct inode 
+ 		if (!(err = is_robranch_super(dentry->d_sb, bstart))) {
+ 			err =
+ 			    vfs_unlink(hidden_dir_dentry->d_inode,
+-				       whiteout_dentry, NULL);
++				       whiteout_dentry/*, NULL*/);
+ 		}
+ 		DPUT(whiteout_dentry);
+ 
+@@ -441,7 +441,7 @@ static int unionfs_symlink(struct inode 
+ 			mode = S_IALLUGO;
+ 			err =
+ 			    vfs_symlink(hidden_dir_dentry->d_inode,
+-					hidden_dentry, NULL, symname);
++					hidden_dentry, /*NULL,*/ symname);
+ 		}
+ 		unlock_dir(hidden_dir_dentry);
+ 
+@@ -552,7 +552,7 @@ static int unionfs_mkdir(struct inode *p
+ 		if (!(err = is_robranch_super(dentry->d_sb, bindex))) {
+ 			err =
+ 			    vfs_mkdir(hidden_parent_dentry->d_inode,
+-				      hidden_dentry, NULL, mode);
++				      hidden_dentry, /*NULL,*/ mode);
+ 		}
+ 		unlock_dir(hidden_parent_dentry);
+ 
+@@ -648,7 +648,7 @@ static int unionfs_mknod(struct inode *d
+ 		//found a.wh.foo entry, remove it then do vfs_mkdir
+ 		if (!(err = is_robranch_super(dentry->d_sb, bstart)))
+ 			err = vfs_unlink(hidden_parent_dentry->d_inode,
+-					 whiteout_dentry, NULL);
++					 whiteout_dentry/*, NULL*/);
+ 		DPUT(whiteout_dentry);
+ 
+ 		unlock_dir(hidden_parent_dentry);
+@@ -682,7 +682,7 @@ static int unionfs_mknod(struct inode *d
+ 		}
+ 		if (!(err = is_robranch_super(dentry->d_sb, bindex))) {
+ 			err = vfs_mknod(hidden_parent_dentry->d_inode,
+-					hidden_dentry, NULL, mode, dev);
++					hidden_dentry, /*NULL,*/ mode, dev);
+ 		}
+ 		/* XXX this could potentially return a negative hidden_dentry! */
+ 		if (err || !hidden_dentry->d_inode) {
+@@ -910,7 +910,7 @@ static int unionfs_setattr(struct dentry
+                 if (ia->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
+                         ia->ia_valid &= ~ATTR_MODE;
+ 
+-		err = notify_change(hidden_dentry, NULL, ia);
++		err = notify_change(hidden_dentry, /*NULL,*/ ia);
+ 		if (err)
+ 			goto out;
+ 		break;
+diff -p -up linux-2.6.28/fs/unionfs/rename.c.orig linux-2.6.28/fs/unionfs/rename.c
+--- linux-2.6.28/fs/unionfs/rename.c.orig	2008-12-10 17:30:16.000000000 -0500
++++ linux-2.6.28/fs/unionfs/rename.c	2008-12-10 17:31:03.000000000 -0500
+@@ -86,7 +86,7 @@ static int do_rename(struct inode *old_d
+ 		if (!(err = is_robranch_super(old_dentry->d_sb, bindex))) {
+ 			err =
+ 			    vfs_unlink(hidden_wh_dir_dentry->d_inode,
+-				       hidden_wh_dentry, NULL);
++				       hidden_wh_dentry/*, NULL*/);
+ 		}
+ 		DPUT(hidden_wh_dentry);
+ 		unlock_dir(hidden_wh_dir_dentry);
+@@ -128,8 +128,8 @@ static int do_rename(struct inode *old_d
+ 	print_dentry("NEWBEF", new_dentry);
+ 	print_dentry("OLDBEF", old_dentry);
+ 	err = vfs_rename(hidden_old_dir_dentry->d_inode, hidden_old_dentry,
+-			 NULL, hidden_new_dir_dentry->d_inode,
+-			 hidden_new_dentry, NULL);
++			 /*NULL,*/ hidden_new_dir_dentry->d_inode,
++			 hidden_new_dentry/*, NULL*/);
+ 	print_dentry("NEWAFT", new_dentry);
+ 	print_dentry("OLDAFT", old_dentry);
+ 
+@@ -212,7 +212,7 @@ static int unionfs_rename_whiteout(struc
+ 		if (!(err = is_robranch_super(old_dir->i_sb, bindex))) {
+ 			err =
+ 			    vfs_unlink(unlink_dir_dentry->d_inode,
+-				       unlink_dentry, NULL);
++				       unlink_dentry/*, NULL*/);
+ 		}
+ 
+ 		fist_copy_attr_times(new_dentry->d_parent->d_inode,
+diff -p -up linux-2.6.28/fs/unionfs/sioq.c.orig linux-2.6.28/fs/unionfs/sioq.c
+--- linux-2.6.28/fs/unionfs/sioq.c.orig	2008-12-10 17:32:04.000000000 -0500
++++ linux-2.6.28/fs/unionfs/sioq.c	2008-12-10 17:32:50.000000000 -0500
+@@ -65,7 +65,7 @@ void __unionfs_mkdir(struct work_struct 
+ {
+ 	struct sioq_args *args = container_of(work, struct sioq_args, wk);
+ 	struct mkdir_args *m = &args->mkdir;
+-	args->err = vfs_mkdir(m->parent, m->dentry, NULL, m->mode);
++	args->err = vfs_mkdir(m->parent, m->dentry, /*NULL,*/ m->mode);
+ 	complete(&args->comp);
+ }
+ 
+@@ -73,14 +73,14 @@ void __unionfs_mknod(struct work_struct 
+ {
+ 	struct sioq_args *args = container_of(work, struct sioq_args, wk);
+ 	struct mknod_args *m = &args->mknod;
+-	args->err = vfs_mknod(m->parent, m->dentry, NULL, m->mode, m->dev);
++	args->err = vfs_mknod(m->parent, m->dentry, /*NULL,*/ m->mode, m->dev);
+ 	complete(&args->comp);
+ }
+ void __unionfs_symlink(struct work_struct *work)
+ {
+ 	struct sioq_args *args = container_of(work, struct sioq_args, wk);
+ 	struct symlink_args *s = &args->symlink;
+-	args->err = vfs_symlink(s->parent, s->dentry, NULL, s->symbuf);
++	args->err = vfs_symlink(s->parent, s->dentry, /*NULL,*/ s->symbuf);
+ 	complete(&args->comp);
+ }
+ 
+@@ -88,7 +88,7 @@ void __unionfs_unlink(struct work_struct
+ {
+ 	struct sioq_args *args = container_of(work, struct sioq_args, wk);
+ 	struct unlink_args *u = &args->unlink;
+-	args->err = vfs_unlink(u->parent, u->dentry, NULL);
++	args->err = vfs_unlink(u->parent, u->dentry/*, NULL*/);
+ 	complete(&args->comp);
+ }
+ 
+diff -p -up linux-2.6.28/fs/unionfs/unlink.c.orig linux-2.6.28/fs/unionfs/unlink.c
+--- linux-2.6.28/fs/unionfs/unlink.c.orig	2008-12-10 17:31:14.000000000 -0500
++++ linux-2.6.28/fs/unionfs/unlink.c	2008-12-10 17:31:33.000000000 -0500
+@@ -118,8 +118,8 @@ static int unionfs_unlink_whiteout(struc
+ 	/* avoid destroying the hidden inode if the file is in use */
+ 	DGET(hidden_dentry);
+ 	if (!(err = is_robranch_super(dentry->d_sb, bindex)))
+-		err = vfs_unlink(hidden_dir_dentry->d_inode, hidden_dentry,
+-				 NULL);
++		err = vfs_unlink(hidden_dir_dentry->d_inode, hidden_dentry/*,
++				 NULL*/);
+ 	DPUT(hidden_dentry);
+ 	fist_copy_attr_times(dir, hidden_dir_dentry->d_inode);
+ 	unlock_dir(hidden_dir_dentry);
+@@ -198,8 +198,8 @@ static int unionfs_rmdir_first(struct in
+ 	/* avoid destroying the hidden inode if the file is in use */
+ 	DGET(hidden_dentry);
+ 	if (!(err = is_robranch(dentry))) {
+-		err = vfs_rmdir(hidden_dir_dentry->d_inode, hidden_dentry,
+-				NULL);
++		err = vfs_rmdir(hidden_dir_dentry->d_inode, hidden_dentry/*,
++				NULL*/);
+ 	}
+ 	DPUT(hidden_dentry);
+ 
+diff -p -up linux-2.6.28/fs/unionfs/xattr.c.orig linux-2.6.28/fs/unionfs/xattr.c
+--- linux-2.6.28/fs/unionfs/xattr.c.orig	2008-12-10 17:24:56.000000000 -0500
++++ linux-2.6.28/fs/unionfs/xattr.c	2008-12-10 17:26:43.000000000 -0500
+@@ -69,8 +69,8 @@ ssize_t unionfs_getxattr(struct dentry *
+ 
+ 	hidden_dentry = dtohd(dentry);
+ 
+-	err = vfs_getxattr(hidden_dentry, NULL, (char*)name, value, size,
+-			   NULL);
++	err = vfs_getxattr(hidden_dentry, /*NULL,*/ (char*)name, value, size/*,
++			   NULL*/);
+ 
+ 	unlock_dentry(dentry);
+ 	print_exit_status(err);
+@@ -96,8 +96,8 @@ unionfs_setxattr(struct dentry *dentry, 
+ 			"flags=%x\n", name, (unsigned long)size, flags);
+ 
+ 	err =
+-	    vfs_setxattr(hidden_dentry, NULL, (char *)name, (char *)value,
+-			 size, flags, NULL);
++	    vfs_setxattr(hidden_dentry, /*NULL,*/ (char *)name, (char *)value,
++			 size, flags/*, NULL*/);
+ 
+ 	unlock_dentry(dentry);
+ 	print_exit_status(err);
+@@ -119,7 +119,7 @@ int unionfs_removexattr(struct dentry *d
+ 
+ 	dprint(PRINT_DEBUG_XATTR, "removexattr: name=\"%s\"\n", name);
+ 
+-	err = vfs_removexattr(hidden_dentry, NULL, (char*)name, NULL);
++	err = vfs_removexattr(hidden_dentry, /*NULL,*/ (char*)name/*, NULL*/);
+ 
+ 	unlock_dentry(dentry);
+ 	print_exit_status(err);
+@@ -141,7 +141,7 @@ ssize_t unionfs_listxattr(struct dentry 
+ 	hidden_dentry = dtohd(dentry);
+ 
+ 	encoded_list = list;
+-	err = vfs_listxattr(hidden_dentry, NULL, encoded_list, size, NULL);
++	err = vfs_listxattr(hidden_dentry, /*NULL,*/ encoded_list, size/*, NULL*/);
+ 
+ 	unlock_dentry(dentry);
+ 	print_exit_status(err);

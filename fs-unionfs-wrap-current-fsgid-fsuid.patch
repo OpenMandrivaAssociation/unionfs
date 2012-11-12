@@ -1,0 +1,22 @@
+Fix unionfs after commit "CRED: Wrap task credential accesses..."
+commits in Linux 2.6.29
+
+Signed-off-by: Herton Ronaldo Krzesinski <herton@mandriva.com.br>
+---
+ fs/unionfs/inode.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff -p -up linux-2.6.28/fs/unionfs/inode.c.orig linux-2.6.28/fs/unionfs/inode.c
+--- linux-2.6.28/fs/unionfs/inode.c.orig	2009-02-12 07:15:18.000000000 -0500
++++ linux-2.6.28/fs/unionfs/inode.c	2009-02-12 07:15:41.000000000 -0500
+@@ -82,8 +82,8 @@ static int unionfs_create(struct inode *
+ 		    | ATTR_MTIME | ATTR_UID | ATTR_GID | ATTR_FORCE;
+ 
+ 		newattrs.ia_mode = mode & ~(current->fs->umask|S_ISUID|S_ISGID);
+-		newattrs.ia_uid = current->fsuid;
+-		newattrs.ia_gid = current->fsgid;
++		newattrs.ia_uid = current_fsuid();
++		newattrs.ia_gid = current_fsgid();
+ 
+ 		mutex_lock(&whiteout_dentry->d_inode->i_mutex);
+ 		if (whiteout_dentry->d_inode->i_size != 0) {
