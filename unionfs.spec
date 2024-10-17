@@ -21,7 +21,7 @@ Patch6: fs-unionfs-atomic_long_t-f_count.patch
 Patch7: fs-unionfs-use-current_umask-helper.patch
 License: GPL
 Group: System/Kernel and hardware
-URL: http://www.filesystems.org/project-unionfs.html
+URL: https://www.filesystems.org/project-unionfs.html
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
 %description
